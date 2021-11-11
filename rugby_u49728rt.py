@@ -1,4 +1,4 @@
-import argparse
+import argparse, os
 
 def rugby(input):
     input = input.split("T")
@@ -7,7 +7,6 @@ def rugby(input):
     t2 = 0
     del input[0]
     for i in input:
-        print(i)
         if i[0] == "1":
             t1 += vals[i[1]]
         else:
@@ -15,10 +14,18 @@ def rugby(input):
     return [t1,t2]
 
 parser = argparse.ArgumentParser()
-parser.add_argument("inFile", metavar="path", type=str, help="Path to input file")
-parser.add_argument("outFile", metavar="path", type=str, help="Path to output file")
+parser.add_argument("inFolder", metavar="path", help="Path to input Folder")
+parser.add_argument("outFolder", metavar="path", help="Path to output folder")
 args = parser.parse_args()
 
-out = rugby(open(args.inFile).read())
-f = open(args.outFile, "w")
-f.write(str(out[0])+":"+str(out[1]))
+
+fileNames = os.listdir(str(args.inFolder))
+filePaths = [os.path.join(args.inFolder,fileName) for fileName in fileNames]
+
+for pathIndex in range(len(filePaths)):
+    out = rugby(open(filePaths[pathIndex]).read())
+    outFileName = fileNames[pathIndex].split(".")
+    outFileName = outFileName[0] + "_u49728rt.txt"
+    f = open(os.path.join(args.outFolder, outFileName), "x")
+    f.write(str(out[0])+":"+str(out[1]))
+
