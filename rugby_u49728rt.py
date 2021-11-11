@@ -26,6 +26,9 @@ for pathIndex in range(len(filePaths)):
     out = rugby(open(filePaths[pathIndex]).read())
     outFileName = fileNames[pathIndex].split(".")
     outFileName = outFileName[0] + "_u49728rt.txt"
-    f = open(os.path.join(args.outFolder, outFileName), "x")
+    try:
+        f = open(os.path.join(args.outFolder, outFileName), "x")
+    except:
+        f = open(os.path.join(args.outFolder, outFileName), "w")
     f.write(str(out[0])+":"+str(out[1]))
 
