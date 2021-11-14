@@ -22,7 +22,7 @@ def spellCheck(inp, spelling):
 
     out  = "u49728rt\n"
     out += "Formatting ###################\n"
-    out += "Number of upper case words changed: " + str(capitals) + "\n"
+    out += "Number of upper case letters changed: " + str(capitals) + "\n"
     out += "Number of punctuations removed: " + str(punctuation) + "\n"
     out += "Number of numbers removed: " + str(numbers) + "\n"
     out += "Spellchecking ###################\n"
@@ -35,14 +35,26 @@ def spellCheck(inp, spelling):
 def checkCapitals(words):
     total = 0
     for word in words:
-        if len(re.findall("[A-Z]",word)) > 0:
-            total += 1
+        total += len(re.findall("[A-Z]",word))
     return total
 
 def checkPunctuation(words):
     total = 0
     for word in words:
         total += len(re.findall("[\.\?\!\,\:\;\-\(\)\[\]\{\}\'\"\#\@\~\>\<\*\&\%\$\£\=\+\-\/]",word))
+        elipsis = True
+        while elipsis:
+            elipsis = False
+            if len(re.findall("[.]",word)) > 2:
+                listWord = list(word)
+                first = listWord.index(".")
+                if first < len(listWord)-2:
+                    elipsis = True
+                    if listWord[first+1] == "." and listWord[first+2] == ".":
+                        total -= 2
+                        first += 2
+                    word = word[first::]
+
     return total
 
 def checkNumbers(words):
