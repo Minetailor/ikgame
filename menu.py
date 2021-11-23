@@ -1,8 +1,12 @@
 from tkinter import *
 from tkinter.ttk import *
+import gamespace
 
 
 def playGame():
+    global mainCont
+    m = gamespace.Main(root)
+    mainCont = False
     print("Playing")
 
 def quitProgram():
@@ -26,6 +30,10 @@ quitButton = Button(root,text="QUIT",command=quitProgram)
 height = root.winfo_height()
 width = root.winfo_width()
 root.update()
+
+height = root.winfo_height()
+width = root.winfo_width()
+print(width,height)
 
 playButton.place(       relx=0.5, rely=0.4, anchor=CENTER)
 leaderboardButton.place(relx=0.5, rely=0.6, anchor=CENTER)
