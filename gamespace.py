@@ -110,24 +110,34 @@ class Main:
                 if dist < item.size+self.player.size:
                     self.increaseScore(-100)
                     self.items.remove(item)
-                    print("blamo!")
+                    print("HIT!")
 
             self.parent.update()
             self.parent.update_idletasks()
         
 
     def clickevent(self,event):
+        if self.player.clickAnimation:
+            return
         self.player.startClickAnimation()
         toremove = []
+        missed = True
         for item in self.items:
-            dist = (Vector2(event.x,event.y)-item.pos).magnitude()
-            if dist < item.size:
+            distPlayer = (self.player.pos-item.pos).magnitude()
+            distClick = (Vector2(event.x,event.y)-item.pos).magnitude()
+            if distPlayer < self.player.grabAura+item.size and distClick < item.size:
                 self.increaseScore(10)
                 print(len(self.items))
                 self.root.delete(item)
                 self.parent.update()
                 toremove.append(item)
+                missed = False
                 print("pop!")
+
+        if missed:
+            self.increaseScore(-100)
+            print("miss")
+            
         for i in toremove:
             self.items.remove(i)
 
@@ -143,19 +153,22 @@ class playerController:
         self.root = mainArea.root
         self.size = 10
         self.root.create_oval([self.pos.x-self.size,self.pos.y-self.size],[self.pos.x+self.size,self.pos.y+self.size])
-        self.startClickAnimationWait = 0.5
-        self.tentacleLength = 20
-        joints = [Joint(Vector2(self.pos.x,self.pos.y + i*self.tentacleLength),self.tentacleLength, math.pi/2) for i in range(0,4)]
-        self.tentacle = Tentacle(joints,self.main,"purple")
+        self.startClickAnimationWait = 1
+        self.clickAnimation = False
+        self.tentacle = Tentacle(self.main,self.pos,"purple")
+        self.grabAura = self.tentacle.getTotalLength()
+        print(self.grabAura)
 
     def update(self):
         self.tentacle.update()
-        if self.startClickAnimationWait < 0.5:
+        if self.startClickAnimationWait < 1:
             self.startClickAnimationWait += self.main.deltatime
         else:
             self.tentacle.colour = "purple"
+            self.clickAnimation = False
 
     def startClickAnimation(self):
+        self.clickAnimation = True
         self.tentacle.colour = "red"
         self.startClickAnimationWait = 0
 
@@ -195,16 +208,20 @@ class Joint:
         self.length = length
 
 class Tentacle:
-    def __init__(self,joints,area,colour):
+    def __init__(self,area,start,colour,numJoints=4,segLength=20):
         self.colour = colour
-        self.joints = joints
+        self.segLength = segLength
+        self.joints = [Joint(Vector2(start.x,start.y + i*self.segLength),self.segLength, math.pi/2) for i in range(0,numJoints)]
         self.area = area
-        self.numJoints = len(self.joints)
-        self.end = joints[-1].position
+        self.numJoints = numJoints
+        self.end = self.joints[-1].position
         self.validDistance = 1
         self.setJoints()
         
         self.makeTentacles()
+
+    def getTotalLength(self):
+        return self.segLength*(self.numJoints-1)
         
 
     def makeTentacles(self):
