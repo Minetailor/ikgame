@@ -71,8 +71,10 @@ class Main:
         self.player = playerController(self,Vector2(self.width/2,self.height/2))
 
         self.mousePos = Vector2(0,0)
+        i = Item(self,"placeholderItem.png",Vector2(-100,-100),speed=0) ## Odd workaround for ghost images appearing
 
-        self.items = []
+
+        self.items = [i]
         self.deltatime = 0.0
         
         self.mainloop()
@@ -115,6 +117,7 @@ class Main:
         
 
     def clickevent(self,event):
+        self.player.startClickAnimation()
         toremove = []
         for item in self.items:
             dist = (Vector2(event.x,event.y)-item.pos).magnitude()
@@ -140,12 +143,21 @@ class playerController:
         self.root = mainArea.root
         self.size = 10
         self.root.create_oval([self.pos.x-self.size,self.pos.y-self.size],[self.pos.x+self.size,self.pos.y+self.size])
+        self.startClickAnimationWait = 0.5
         self.tentacleLength = 20
-        joints = [Joint(Vector2(self.pos.x,self.pos.y + i*tentacleLength),tentacleLength, math.pi/2) for i in range(0,4)]
-        self.tentacle = Tentacle(joints,self.main)
+        joints = [Joint(Vector2(self.pos.x,self.pos.y + i*self.tentacleLength),self.tentacleLength, math.pi/2) for i in range(0,4)]
+        self.tentacle = Tentacle(joints,self.main,"purple")
 
     def update(self):
         self.tentacle.update()
+        if self.startClickAnimationWait < 0.5:
+            self.startClickAnimationWait += self.main.deltatime
+        else:
+            self.tentacle.colour = "purple"
+
+    def startClickAnimation(self):
+        self.tentacle.colour = "red"
+        self.startClickAnimationWait = 0
 
 class Item:
     def __init__(self, mainArea, imgPath, startpos, speed=50):
@@ -183,7 +195,8 @@ class Joint:
         self.length = length
 
 class Tentacle:
-    def __init__(self,joints,area):
+    def __init__(self,joints,area,colour):
+        self.colour = colour
         self.joints = joints
         self.area = area
         self.numJoints = len(self.joints)
@@ -197,7 +210,7 @@ class Tentacle:
     def makeTentacles(self):
         self.tentacles = []
         for i in range(self.numJoints-1):
-            self.tentacles.append(self.area.root.create_line(self.jointPositions[i],self.jointPositions[i+1],width = 5-i*2))
+            self.tentacles.append(self.area.root.create_line(self.jointPositions[i],self.jointPositions[i+1],width = 5-i*2,fill=self.colour))
 
     def setJoints(self):
         self.jointPositions = []
