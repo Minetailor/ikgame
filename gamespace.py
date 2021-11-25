@@ -57,31 +57,45 @@ class Main:
         self.root = Canvas(self.parent,width=self.width,height=self.height)
 
 
+
         self.spawnCircle = max(self.width/2,self.height/2)
+        print(self.width,self.height)
+        print(self.spawnCircle)
 
         self.score = 0
         self.scoreTextID = self.root.create_text(0,0, text="Score: 0", anchor=NW)
 
+        
+
         self.root.place(x=0,y=0)
 
-        self.parent.bind("a",self.debug_makeItem)
-        self.parent.bind("<Button-1>",self.clickevent)
+        self.bindKeys()
         
         
         self.player = playerController(self,Vector2(self.width/2,self.height/2))
 
+        self.lifeTextID = self.root.create_text(self.width,0, text="Lives: 3",anchor=NE)
+
         self.mousePos = Vector2(0,0)
         i = Item(self,"placeholderItem.png",Vector2(-100,-100),speed=0) ## Odd workaround for ghost images appearing
-
+        i.spawn()
 
         self.items = [i]
         self.deltatime = 0.0
+        self.difficulty = 1
+
+        self.waveTimer = 0
+        self.wave = []
+
+        self.notPaused = True
+        self.gameCont = True
+        self.returnToMenu = False
         
         self.mainloop()
 
-    def debug_makeItem(self,event):
+    def debug_makeWave(self,event):
         print("spawwwn")
-        self.makeItem()
+        self.generateWave()
 
     def makeItem(self):
         angle = random.uniform(0,math.pi*2)
@@ -90,61 +104,137 @@ class Main:
         self.items.append(i)
 
     def mainloop(self):
-        global mainCont
         preTime = time.time()
-        while mainCont:
+        while self.gameCont:
 
             ## deltatime calcs
             curTime = time.time()
             self.deltatime = curTime - preTime
             preTime = curTime
 
-            self.mousePos.set(self.parent.winfo_pointerx()-self.parent.winfo_rootx(),self.parent.winfo_pointery()-self.parent.winfo_rooty())
-            self.player.tentacle.follow(self.mousePos)
-            self.player.update()
+            if self.notPaused:
 
-            ## Item Hit Detection
-            for item in self.items:
-                item.update()
-                dist = (self.player.pos-item.pos).magnitude()
-                if dist < item.size+self.player.size:
-                    self.increaseScore(-100)
-                    self.items.remove(item)
-                    print("HIT!")
+                self.mousePos.set(self.parent.winfo_pointerx()-self.parent.winfo_rootx(),self.parent.winfo_pointery()-self.parent.winfo_rooty())
+                self.player.tentacle.follow(self.mousePos)
+                self.player.update()
+
+                self.waveTimer += self.deltatime
+                self.waveUpdate()
+
+                ## Item Hit Detection
+                for item in self.items:
+                    item.update()
+                    dist = (self.player.pos-item.pos).magnitude()
+                    if dist < item.size+self.player.size:
+                        self.decreaseLife(1)
+                        self.items.remove(item)
+                        print("HIT!")
 
             self.parent.update()
             self.parent.update_idletasks()
+        self.root.destroy()
+
+    def pauseBinding(self,event):
+        self.pause()
+        self.parent.bind("<Escape>", self.resumeBinding)
+
+        pBackground = Style()
+        pBackground.configure("TFrame",background="green")
+
+        pauseMenu = Frame(self.parent, width=self.width/4,height=self.height/2)
+        pauseMenu.place(relx=0.5,rely=0.5, anchor="center")
+        resumeButton = Button(pauseMenu, text="RESUME",command=self.resume)
+        resumeButton.place(relx=0.5, rely=0.2,anchor="center")
+        menuButton = Button(pauseMenu, text="QUIT", command=self.returnMenu)
+        menuButton.place(relx=0.5, rely=0.7, anchor="center")
+
+        self.pauseMenu = pauseMenu
+
+    def resumeBinding(self,event):
+        self.resume()
         
+
+
+    def pause(self):
+        self.unbindKeys()
+
+        self.notPaused = False
+
+    def resume(self):
+        self.bindKeys()
+        self.notPaused = True
+        self.pauseMenu.destroy()
+
+    def unbindKeys(self):
+        self.parent.unbind("a")
+        self.parent.unbind("<Button-1>")
+        self.parent.unbind("<Escape>")
+
+    def bindKeys(self):
+        self.parent.bind("a",self.debug_makeWave)
+        self.parent.bind("<Button-1>",self.clickevent)
+        self.parent.bind("<Escape>", self.pauseBinding)
+
+    def returnMenu(self):
+        self.gameCont = False
+        self.unbindKeys()
+        self.pauseMenu.destroy()
+        self.returnToMenu = True
+
+
+    
+
+    def generateWave(self):
+        self.wave = []
+        n = math.ceil(10**self.difficulty)
+        tmin = 1/self.difficulty # too small
+        tmax = 3/self.difficulty
+        for i in range(n):
+            angle = random.uniform(-math.pi,math.pi)
+            pos = Vector2(math.cos(angle),math.sin(angle))*self.spawnCircle
+            nextItem = [random.uniform(tmin,tmax),Item(self,"placeholderItem.png",pos+self.player.pos)]
+            self.wave.append(nextItem)
+
+        self.waveTimer = 0
+
+    def waveUpdate(self):
+        if len(self.wave) == 0:
+            return
+        if self.waveTimer > self.wave[0][0]:
+            self.wave[0][1].spawn()
+            self.items.append(self.wave[0][1])
+            self.waveTimer -= self.wave[0][0]
+            del self.wave[0]
+            self.waveUpdate()
 
     def clickevent(self,event):
         if self.player.clickAnimation:
             return
         self.player.startClickAnimation()
         toremove = []
-        missed = True
         for item in self.items:
             distPlayer = (self.player.pos-item.pos).magnitude()
             distClick = (Vector2(event.x,event.y)-item.pos).magnitude()
             if distPlayer < self.player.grabAura+item.size and distClick < item.size:
                 self.increaseScore(10)
-                print(len(self.items))
                 self.root.delete(item)
                 self.parent.update()
                 toremove.append(item)
                 missed = False
                 print("pop!")
-
-        if missed:
-            self.increaseScore(-100)
-            print("miss")
             
         for i in toremove:
             self.items.remove(i)
 
+    def decreaseLife(self,amount):
+        self.player.lives -= amount
+        self.root.itemconfigure(self.lifeTextID,text="Lives: "+str(self.player.lives))
+
     def increaseScore(self,nscore):
         self.score += nscore
         self.root.itemconfigure(self.scoreTextID,text="Score: "+str(self.score))
-        
+
+
 
 class playerController:
     def __init__(self,mainArea,pos):
@@ -157,6 +247,7 @@ class playerController:
         self.clickAnimation = False
         self.tentacle = Tentacle(self.main,self.pos,"purple")
         self.grabAura = self.tentacle.getTotalLength()
+        self.lives = 3
         print(self.grabAura)
 
     def update(self):
@@ -182,12 +273,13 @@ class Item:
 
         self.size = 20
 
-        self.id = self.root.create_image(self.pos.x, self.pos.y, image=self.img)
-        
         self.rotation = 0
         self.speed = speed
         self.direction = (self.main.player.pos-self.pos)
         self.direction.normalise()
+
+    def spawn(self):
+        self.id = self.root.create_image(self.pos.x, self.pos.y, image=self.img)
         
 
     def update(self):

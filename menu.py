@@ -6,8 +6,9 @@ import gamespace
 def playGame():
     global mainCont
     m = gamespace.Main(root)
-    mainCont = False
-    print("Playing")
+    if not(m.returnToMenu):
+        mainCont = False
+    
 
 def quitProgram():
     #Run quit program
