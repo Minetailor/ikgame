@@ -1,11 +1,15 @@
-from os import close
 from tkinter import *
 from tkinter.ttk import *
 import gamespace
 import leaderboardScript as l
 
 
-def playGame():
+###  IMPORTANT  ###
+###USES 1280X720###
+###################
+
+
+def playGame(): # Runs the main game
     global mainCont
     closeMenu()
     m = gamespace.Main(root)
@@ -24,21 +28,21 @@ def openLeaderboard():
     a = l.Main(root)
     openMenu()
 
-def closeMenu():
+def closeMenu(): # removes all menu widgets
     backgroundImage.forget()
     playButton.forget()
     leaderboardButton.forget()
     quitButton.forget()
 
 
-def openMenu():
+def openMenu(): # places all widgets correctly for the menu
     backgroundImage.pack()
     playButton.place(       relx=0.5, rely=0.4, anchor=CENTER)
     leaderboardButton.place(relx=0.5, rely=0.6, anchor=CENTER)
     quitButton.place(       relx=0.5, rely=0.8, anchor=CENTER)
     
 
-def bossKey(event):
+def bossKey(event): # toggles the boss key mode while in the main menu and leaderboards
     global bossKeyToggle
     global c
     if bossKeyToggle:
@@ -55,7 +59,7 @@ def bossKey(event):
 bossKeyToggle = False
 root = Tk()
 root.protocol("WM_DELETE_WINDOW", quitProgram())
-img = PhotoImage(file="placeholder.png")
+img = PhotoImage(file="final.png")
 backgroundImage = Label(image=img)
 
 playButton = Button(root,text="PLAY",command=playGame)
@@ -65,20 +69,12 @@ quitButton = Button(root,text="QUIT",command=quitProgram)
 root.bind("b", bossKey)
 
 openMenu()
-
-height = root.winfo_height()
-width = root.winfo_width()
 root.update()
 
 height = root.winfo_height()
 width = root.winfo_width()
 
-playButton.place(       relx=0.5, rely=0.4, anchor=CENTER)
-leaderboardButton.place(relx=0.5, rely=0.6, anchor=CENTER)
-quitButton.place(       relx=0.5, rely=0.8, anchor=CENTER)
-
-
-root.resizable(False,False)
+root.resizable(False,False) # stops the window from changin in size
 
 
 mainCont = True

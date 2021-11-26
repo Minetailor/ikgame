@@ -3,20 +3,19 @@ from tkinter.ttk import *
 import math
 
 
-class Main:
+class Main: ## MAIN LEADERBOARD SCREEN
     def __init__(self, root):
         self.root = root
         self.height = root.winfo_height()
         self.width = root.winfo_width()
 
-        print(self.height)
         self.leaderboard = Leaderboard()
 
         self.leaderBoardCanvas = Canvas(self.root,width=self.width,height=self.height)
         self.title = self.leaderBoardCanvas.create_text(self.width/2,0,anchor=N,text="LEADERBOARD")
 
         pos = 20
-        self.text = []
+        self.text = [] ## Displays the leaderboard content
         for i,item in enumerate(self.leaderboard.board):
             disp = str(i+1) + ". " + item[1] + " : " + str(item[0])
             self.text.append(self.leaderBoardCanvas.create_text(self.width/2,pos,anchor=N,text=disp))
@@ -31,17 +30,16 @@ class Main:
         self.mainCont = True
 
         self.mainloop()
-        print("this changed anything?")
 
     def mainloop(self):
         while self.mainCont:
             self.root.update()
         self.leaderBoardCanvas.destroy()
 
-    def leave(self):
+    def leave(self): # leaves the leaderboard main screen
         self.mainCont = False
 
-class Viewport:
+class Viewport: # different way to view the leaderboard, used at the end of the round.
     def __init__(self,frame,value):
         self.leaderboard = Leaderboard()
         self.frame = frame
@@ -55,6 +53,8 @@ class Viewport:
 
         n = math.floor(self.height/15)
         current = max(0,value-math.floor(n/2))
+
+        #Displays only those immediately above and below
         
         pos = 0
         self.text = []
@@ -76,7 +76,7 @@ class Viewport:
 
 
 
-class Leaderboard:
+class Leaderboard: # holds everything to do with the leaderboard
     def __init__(self):
         self.fileName = "leaderboard.txt"
         file = open(self.fileName,"r")
@@ -86,7 +86,7 @@ class Leaderboard:
             if len(line) != 0:
                 self.board.append((int(line[0]),line[1]))
 
-    def addItem(self,score,name): ##returns where the item was added
+    def addItem(self,score,name): ##returns where the item was added. Adds the item into the ordered list
         pos = 0
         cont = True
         while cont and (pos != len(self.board)):
@@ -102,7 +102,7 @@ class Leaderboard:
         return pos
 
 
-    def write(self):
+    def write(self): # writes the new leaderboard to the leaderboard file
         leaderboardWrite = ""
         for item in self.board:
             leaderboardWrite += str(item[0]) + " " + item[1] + "\n"
