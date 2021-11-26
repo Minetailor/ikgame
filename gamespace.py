@@ -141,6 +141,8 @@ class Main:
                         self.decreaseLife(1)
                         self.items.remove(item)
                         self.remaining -= 1
+                        self.player.hit = True
+                        self.player.startHit = time.time()
 
                 #updates the wave and items left in the wave counters
                 self.root.itemconfigure(self.remainingTextID,text=("Wave: " + str(self.waveNumber) + "\nRemaining: "+ str(self.remaining)))
@@ -162,11 +164,13 @@ class Main:
         shopFrame = Frame(self.root,width=self.width/3,height=self.height/3)
         shopFrame.place(relx=0.5,rely=0.5, anchor=CENTER)
         
-        lifeIncreaseB = Button(shopFrame, text="LIFE +2", command=self.shopLifeIncrease)
+        lifeIncreaseB = Button(shopFrame, text="LIFE ++", command=self.shopLifeIncrease)
         lengthIncreaseB = Button(shopFrame, text="LENGTH ++", command=self.shopLengthIncrease)
+        cooldownDecreaseB = Button(shopFrame, text="COOLDOWN --", command=self.shopReduceCooldown)
 
-        lifeIncreaseB.place(relx=0.35,rely=0.5,anchor=CENTER)
-        lengthIncreaseB.place(relx=0.65,rely=0.5,anchor=CENTER)
+        lifeIncreaseB.place(relx=0.25,rely=0.5,anchor=CENTER)
+        lengthIncreaseB.place(relx=0.75,rely=0.5,anchor=CENTER)
+        cooldownDecreaseB.place(relx=0.5,rely=0.5,anchor=CENTER)
 
         self.unselected = True
         while self.unselected: # just a loop in the shop until it an option is chosen
@@ -185,6 +189,11 @@ class Main:
         self.player.setTentacle(Tentacle(self,self.player.pos,"purple",segLength=totalLength))
         self.unselected = False
 
+    def shopReduceCooldown(self):
+        if self.player.cooldown > 0:
+            self.player.cooldown -= 0.2
+        self.unselected = False
+
     def shopLifeIncrease(self): # increases the number of lives by 2
         self.decreaseLife(-2)
         self.unselected = False
@@ -196,12 +205,13 @@ class Main:
         file.close()
 
         s = Style(self.parent)
-        s.configure("TFrame", background="red")
+        s.configure("TFrame", background="red",relief=SUNKEN)
 
-        f = Frame(self.parent,height=500,width=400)
+        f = Frame(self.parent,height=500,width=400,borderwidth=10)
         f.place(x=self.width/2,y=self.height/2,anchor=CENTER)
         t = Label(f,text="GAME OVER!!")
         t2 = Label(f,text="FINAL SCORE: "+str(self.score))
+        t3 = Label(f,text="\/NAME\/")
         self.name_var = StringVar()
         e = Entry(f,textvariable=self.name_var) # Allows for entry of a name to be used in the leaderboard
         b1 = Button(f,text="MAIN MENU", command=self.returnMenuFromLoss)
@@ -212,11 +222,13 @@ class Main:
         b1.place(relx=0.5,rely=0.9, anchor=CENTER)
         t.place(relx=0.5,rely=0.05, anchor=N)
         t2.place(relx=0.5,rely=0.15, anchor=CENTER)
+        t3.place(relx=0.5,rely=0.45, anchor=CENTER)
 
         #used to keep track of widgets cleanly rather than many variables
         self.LosesGameWidgets = {
             "Frame" : f,
             "Title" : t,
+            "Name"  : t3,
             "Entry" : e,
             "Submit": b2,
             "Play"  : b1,
@@ -249,7 +261,7 @@ class Main:
         pBackground = Style()
         pBackground.configure("TFrame",background="green")
 
-        pauseMenu = Frame(self.parent, width=self.width/4,height=self.height/2)
+        pauseMenu = Frame(self.parent, width=self.width/8,height=self.height/4)
         pauseMenu.place(relx=0.5,rely=0.5, anchor="center")
         resumeButton = Button(pauseMenu, text="RESUME",command=self.resume)
         resumeButton.place(relx=0.5, rely=0.2,anchor="center")
@@ -379,12 +391,16 @@ class playerController:
         self.main = mainArea
         self.root = mainArea.root
         self.size = 10
-        self.root.create_oval([self.pos.x-self.size,self.pos.y-self.size],[self.pos.x+self.size,self.pos.y+self.size]) # the player "body"
+        self.body = self.root.create_oval([self.pos.x-self.size,self.pos.y-self.size],[self.pos.x+self.size,self.pos.y+self.size],fill="black") # the player "body"
         self.startClickAnimationWait = 1
+        self.cooldown = 1
         self.clickAnimation = False
         self.setTentacle(Tentacle(self.main,self.pos,"purple"))
         self.lives = 3
         self.hovering = False
+        self.startHit = 0
+        self.hitFlashTime = 2
+        self.hit = False
 
     def setTentacle(self,t): # allows the tentacle to be changed
         self.tentacle = t
@@ -393,7 +409,7 @@ class playerController:
     def update(self):
         self.tentacle.update()
         
-        if self.startClickAnimationWait < 1: # allows for the colour of the tentacle to change
+        if self.startClickAnimationWait < self.cooldown: # allows for the colour of the tentacle to change
             self.startClickAnimationWait += self.main.deltatime
         else:
             self.hovering = False
@@ -407,6 +423,14 @@ class playerController:
             else:
                 self.tentacle.colour = "purple"
             self.clickAnimation = False
+
+        if self.hit:
+            self.root.delete(self.body)
+            self.body = self.root.create_oval([self.pos.x-self.size,self.pos.y-self.size],[self.pos.x+self.size,self.pos.y+self.size],fill="red")
+            if self.hitFlashTime + self.startHit < time.time():
+                self.hit = False
+                self.body = self.root.create_oval([self.pos.x-self.size,self.pos.y-self.size],[self.pos.x+self.size,self.pos.y+self.size],fill="black")
+
 
     def startClickAnimation(self):
         self.clickAnimation = True
