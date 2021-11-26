@@ -20,7 +20,6 @@ def quitProgram():
     mainCont = False
 
 def openLeaderboard():
-    print("leaderboard open")
     closeMenu()
     a = l.Main(root)
     openMenu()

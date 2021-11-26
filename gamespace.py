@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter.ttk import *
 import math
 import random
+import leaderboardScript as l
 
 import time
 
@@ -56,16 +57,12 @@ class Main:
         self.width = root.winfo_width()
         self.root = Canvas(self.parent,width=self.width,height=self.height)
 
-
-
         self.spawnCircle = max(self.width/2,self.height/2)
         print(self.width,self.height)
         print(self.spawnCircle)
 
         self.score = 0
         self.scoreTextID = self.root.create_text(0,0, text="Score: 0", anchor=NW)
-
-        
 
         self.root.place(x=0,y=0)
 
@@ -75,6 +72,7 @@ class Main:
         self.player = playerController(self,Vector2(self.width/2,self.height/2))
 
         self.lifeTextID = self.root.create_text(self.width,0, text="Lives: 3",anchor=NE)
+        self.remainingTextID = self.root.create_text(self.width/2,0,text="Remaining: 1", anchor=N)
 
         self.mousePos = Vector2(0,0)
         i = Item(self,"placeholderItem.png",Vector2(-100,-100),speed=0) ## Odd workaround for ghost images appearing
@@ -82,20 +80,30 @@ class Main:
 
         self.items = [i]
         self.deltatime = 0.0
-        self.difficulty = 1
+        self.difficulty = 0.3
+        self.remaining = 0
 
         self.waveTimer = 0
-        self.wave = []
+        self.waveNumber = 1
+        self.wave = [[0.1,Item(self,"placeholderItem.png",Vector2(self.width/2,-50))]]
+        self.remaining = 1
 
         self.notPaused = True
         self.gameCont = True
         self.returnToMenu = False
+
+        
         
         self.mainloop()
 
     def debug_makeWave(self,event):
         print("spawwwn")
         self.generateWave()
+
+    def debug_nextBuy(self,event):
+        b = self.waveNumber % 5
+        self.waveNumber += 5-b
+        self.difficulty += 0.1*(5-b)
 
     def makeItem(self):
         angle = random.uniform(0,math.pi*2)
@@ -114,6 +122,7 @@ class Main:
 
             if self.notPaused:
 
+
                 self.mousePos.set(self.parent.winfo_pointerx()-self.parent.winfo_rootx(),self.parent.winfo_pointery()-self.parent.winfo_rooty())
                 self.player.tentacle.follow(self.mousePos)
                 self.player.update()
@@ -128,11 +137,103 @@ class Main:
                     if dist < item.size+self.player.size:
                         self.decreaseLife(1)
                         self.items.remove(item)
-                        print("HIT!")
+                        self.remaining -= 1
+
+                self.root.itemconfigure(self.remainingTextID,text=("Wave: " + str(self.waveNumber) + "\nRemaining: "+ str(self.remaining)))
+
+                
+                if self.remaining == 0:
+                    if self.waveNumber % 5 == 0:
+                        self.shop()
+                    print("WAVE COMPLETED")
+                    self.waveNumber += 1
+                    self.difficulty += 0.1
+                    self.generateWave()
+
+
 
             self.parent.update()
             self.parent.update_idletasks()
         self.root.destroy()
+
+    def shop(self):
+        self.pause()
+        shopFrame = Frame(self.root,width=self.width/3,height=self.height/3)
+        shopFrame.place(relx=0.5,rely=0.5, anchor=CENTER)
+        
+        lifeIncreaseB = Button(shopFrame, text="LIFE +2", command=self.shopLifeIncrease)
+        lengthIncreaseB = Button(shopFrame, text="LENGTH ++", command=self.shopLengthIncrease)
+
+        lifeIncreaseB.place(relx=0.25,rely=0.5,anchor=CENTER)
+        lengthIncreaseB.place(relx=0.75,rely=0.5,anchor=CENTER)
+
+        self.unselected = True
+        while self.unselected:
+            self.parent.update()
+
+        shopFrame.destroy()
+
+        self.resumeRound()
+
+    def shopLengthIncrease(self):
+        totalLength = self.player.tentacle.getTotalLength()
+        totalLength += 80
+        totalLength /= 4
+        self.player.tentacle.deleteTentacle()
+        self.player.setTentacle(Tentacle(self,self.player.pos,"purple",segLength=totalLength))
+        self.unselected = False
+
+    def shopLifeIncrease(self):
+        self.decreaseLife(-2)
+        self.unselected = False
+    
+    def lose(self):
+        self.pause()
+        s = Style(self.parent)
+        s.configure("TFrame", background="red")
+
+        f = Frame(self.parent,height=500,width=400)
+        f.place(x=self.width/2,y=self.height/2,anchor=CENTER)
+        t = Label(f,text="GAME OVER!!")
+        t2 = Label(f,text="FINAL SCORE: "+str(self.score))
+        self.name_var = StringVar()
+        e = Entry(f,textvariable=self.name_var)
+        b1 = Button(f,text="MAIN MENU", command=self.returnMenuFromLoss)
+        b2 = Button(f,text="SUBMIT SCORE",command=self.submit)
+
+        e.place(relx=0.5, rely=0.5, anchor=CENTER)
+        b2.place(relx=0.5,rely=0.6, anchor=CENTER)
+        b1.place(relx=0.5,rely=0.9, anchor=CENTER)
+        t.place(relx=0.5,rely=0.05, anchor=N)
+        t2.place(relx=0.5,rely=0.2, anchor=CENTER)
+
+        self.LosesGameWidgets = {
+            "Frame" : f,
+            "Title" : t,
+            "Entry" : e,
+            "Submit": b2,
+            "Play"  : b1,
+            "Frame2": None
+        }
+
+    def returnMenuFromLoss(self):
+        self.gameCont = False
+        self.LosesGameWidgets["Frame"].destroy()
+        if self.LosesGameWidgets["Frame2"] != None:
+            self.LosesGameWidgets["Frame2"].destroy()
+        self.unbindKeys()
+        self.returnToMenu = True
+
+    def submit(self):
+        n = self.name_var.get()
+        self.LosesGameWidgets["Submit"].forget()
+        a = l.Leaderboard()
+        pos = a.addItem(self.score,n)
+        a.write()
+        self.LosesGameWidgets["Frame2"] = Frame(self.parent,height = 300,width = 250)
+        self.LosesGameWidgets["Frame2"].place(relx=0.5,rely=0.5, anchor=CENTER)
+        l.Viewport(self.LosesGameWidgets["Frame2"],pos)
+
 
     def pauseBinding(self,event):
         self.pause()
@@ -153,12 +254,14 @@ class Main:
     def resumeBinding(self,event):
         self.resume()
         
-
-
     def pause(self):
         self.unbindKeys()
 
         self.notPaused = False
+
+    def resumeRound(self):
+        self.bindKeys()
+        self.notPaused = True
 
     def resume(self):
         self.bindKeys()
@@ -169,11 +272,13 @@ class Main:
         self.parent.unbind("a")
         self.parent.unbind("<Button-1>")
         self.parent.unbind("<Escape>")
+        self.parent.unbind("k")
 
     def bindKeys(self):
         self.parent.bind("a",self.debug_makeWave)
         self.parent.bind("<Button-1>",self.clickevent)
         self.parent.bind("<Escape>", self.pauseBinding)
+        self.parent.bind("k",self.debug_nextBuy)
 
     def returnMenu(self):
         self.gameCont = False
@@ -181,18 +286,18 @@ class Main:
         self.pauseMenu.destroy()
         self.returnToMenu = True
 
-
-    
-
     def generateWave(self):
         self.wave = []
         n = math.ceil(10**self.difficulty)
+        self.remaining = n
         tmin = 1/self.difficulty # too small
         tmax = 3/self.difficulty
+        speedmax = math.ceil(50+10*self.difficulty)
         for i in range(n):
             angle = random.uniform(-math.pi,math.pi)
+            speed = random.randint(49,speedmax)
             pos = Vector2(math.cos(angle),math.sin(angle))*self.spawnCircle
-            nextItem = [random.uniform(tmin,tmax),Item(self,"placeholderItem.png",pos+self.player.pos)]
+            nextItem = [random.uniform(tmin,tmax),Item(self,"placeholderItem.png",pos+self.player.pos,speed)]
             self.wave.append(nextItem)
 
         self.waveTimer = 0
@@ -214,14 +319,14 @@ class Main:
         toremove = []
         for item in self.items:
             distPlayer = (self.player.pos-item.pos).magnitude()
-            distClick = (Vector2(event.x,event.y)-item.pos).magnitude()
+            distClick = (self.player.tentacle.end-item.pos).magnitude()
             if distPlayer < self.player.grabAura+item.size and distClick < item.size:
                 self.increaseScore(10)
                 self.root.delete(item)
                 self.parent.update()
                 toremove.append(item)
                 missed = False
-                print("pop!")
+                self.remaining -= 1
             
         for i in toremove:
             self.items.remove(i)
@@ -229,6 +334,8 @@ class Main:
     def decreaseLife(self,amount):
         self.player.lives -= amount
         self.root.itemconfigure(self.lifeTextID,text="Lives: "+str(self.player.lives))
+        if self.player.lives == 0:
+            self.lose()
 
     def increaseScore(self,nscore):
         self.score += nscore
@@ -245,17 +352,30 @@ class playerController:
         self.root.create_oval([self.pos.x-self.size,self.pos.y-self.size],[self.pos.x+self.size,self.pos.y+self.size])
         self.startClickAnimationWait = 1
         self.clickAnimation = False
-        self.tentacle = Tentacle(self.main,self.pos,"purple")
-        self.grabAura = self.tentacle.getTotalLength()
+        self.setTentacle(Tentacle(self.main,self.pos,"purple"))
         self.lives = 3
-        print(self.grabAura)
+        self.hovering = False
+
+    def setTentacle(self,t):
+        self.tentacle = t
+        self.grabAura = self.tentacle.getTotalLength()
 
     def update(self):
         self.tentacle.update()
+        
         if self.startClickAnimationWait < 1:
             self.startClickAnimationWait += self.main.deltatime
         else:
-            self.tentacle.colour = "purple"
+            self.hovering = False
+            for item in self.main.items:
+                distPlayer = (self.pos-item.pos).magnitude()
+                distClick = (self.tentacle.end-item.pos).magnitude()
+                if distPlayer < self.grabAura+item.size and distClick < item.size:
+                    self.hovering = True
+            if self.hovering:
+                self.tentacle.colour = "blue"
+            else:
+                self.tentacle.colour = "purple"
             self.clickAnimation = False
 
     def startClickAnimation(self):
@@ -300,7 +420,7 @@ class Joint:
         self.length = length
 
 class Tentacle:
-    def __init__(self,area,start,colour,numJoints=4,segLength=20):
+    def __init__(self,area,start,colour,numJoints=4,segLength=100):
         self.colour = colour
         self.segLength = segLength
         self.joints = [Joint(Vector2(start.x,start.y + i*self.segLength),self.segLength, math.pi/2) for i in range(0,numJoints)]
@@ -312,6 +432,10 @@ class Tentacle:
         
         self.makeTentacles()
 
+    def deleteTentacle(self):
+        for tentacle in self.tentacles:
+            self.area.root.delete(tentacle)
+
     def getTotalLength(self):
         return self.segLength*(self.numJoints-1)
         
@@ -319,7 +443,7 @@ class Tentacle:
     def makeTentacles(self):
         self.tentacles = []
         for i in range(self.numJoints-1):
-            self.tentacles.append(self.area.root.create_line(self.jointPositions[i],self.jointPositions[i+1],width = 5-i*2,fill=self.colour))
+            self.tentacles.append(self.area.root.create_line(self.jointPositions[i],self.jointPositions[i+1],width = self.segLength/4-i*2,fill=self.colour))
 
     def setJoints(self):
         self.jointPositions = []
