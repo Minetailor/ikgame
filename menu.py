@@ -37,8 +37,22 @@ def openMenu():
     leaderboardButton.place(relx=0.5, rely=0.6, anchor=CENTER)
     quitButton.place(       relx=0.5, rely=0.8, anchor=CENTER)
     
-    
 
+def bossKey(event):
+    global bossKeyToggle
+    global c
+    if bossKeyToggle:
+        c.destroy()
+        bossKeyToggle = False
+    else:
+        c = Canvas(root, width=1280, height=720)
+        c.place(x=0,y=0,anchor=NW)
+        boss = PhotoImage(file="bossKey.png")
+        root.boss = boss
+        c.create_image(0,0,image=root.boss, anchor=NW)        
+        bossKeyToggle = True
+    
+bossKeyToggle = False
 root = Tk()
 root.protocol("WM_DELETE_WINDOW", quitProgram())
 img = PhotoImage(file="placeholder.png")
@@ -48,6 +62,8 @@ playButton = Button(root,text="PLAY",command=playGame)
 leaderboardButton = Button(root,text="LEADERBOARD",command=openLeaderboard)
 quitButton = Button(root,text="QUIT",command=quitProgram)
 
+root.bind("b", bossKey)
+
 openMenu()
 
 height = root.winfo_height()
@@ -56,7 +72,6 @@ root.update()
 
 height = root.winfo_height()
 width = root.winfo_width()
-print(width,height)
 
 playButton.place(       relx=0.5, rely=0.4, anchor=CENTER)
 leaderboardButton.place(relx=0.5, rely=0.6, anchor=CENTER)

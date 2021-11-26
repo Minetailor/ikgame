@@ -58,8 +58,7 @@ class Main:
         self.root = Canvas(self.parent,width=self.width,height=self.height)
 
         self.spawnCircle = max(self.width/2,self.height/2)
-        print(self.width,self.height)
-        print(self.spawnCircle)
+
 
         self.score = 0
         self.scoreTextID = self.root.create_text(0,0, text="Score: 0", anchor=NW)
@@ -68,14 +67,13 @@ class Main:
 
         self.bindKeys()
         
-        
         self.player = playerController(self,Vector2(self.width/2,self.height/2))
 
         self.lifeTextID = self.root.create_text(self.width,0, text="Lives: 3",anchor=NE)
         self.remainingTextID = self.root.create_text(self.width/2,0,text="Remaining: 1", anchor=N)
 
         self.mousePos = Vector2(0,0)
-        i = Item(self,"placeholderItem.png",Vector2(-100,-100),speed=0) ## Odd workaround for ghost images appearing
+        i = Item(self,"coin.png",Vector2(-100,-100),speed=0) ## Odd workaround for ghost images appearing
         i.spawn()
 
         self.items = [i]
@@ -85,16 +83,40 @@ class Main:
 
         self.waveTimer = 0
         self.waveNumber = 1
-        self.wave = [[0.1,Item(self,"placeholderItem.png",Vector2(self.width/2,-50))]]
+        self.wave = [[0.1,Item(self,"coin.png",Vector2(self.width/2,-50))]]
         self.remaining = 1
 
         self.notPaused = True
         self.gameCont = True
         self.returnToMenu = False
 
+        self.previousCombo = time.time()
+
+        file = open("saveFile.txt","r")
+        a = file.read(1)
+        if a != "N":
+            v = file.readlines()
+            self.waveNumber = int(a+v[0])
+            self.difficulty = float(v[1])
+            self.decreaseLife(3-int(v[2]))
+            self.increaseScore(int(v[3]))
+            self.player.tentacle.deleteTentacle()
+            self.player.setTentacle(Tentacle(self,self.player.pos,"purple",segLength=float(v[4])))
+            self.generateWave()
+
         
         
         self.mainloop()
+
+    def saveGame(self):
+        file = open("saveFile.txt","w")
+        out =  str(self.waveNumber+1) + "\n"
+        out += str(self.difficulty+0.1) + "\n"
+        out += str(self.player.lives) + "\n"
+        out += str(self.score) + "\n"
+        out += str(self.player.tentacle.segLength)
+        file.write(out)
+        file.close()
 
     def debug_makeWave(self,event):
         print("spawwwn")
@@ -108,7 +130,7 @@ class Main:
     def makeItem(self):
         angle = random.uniform(0,math.pi*2)
         spc = self.spawnCircle + 10 ## currently for size, although size may not change
-        i = Item(self,"placeholderItem.png",Vector2(math.cos(angle),math.sin(angle))*spc)
+        i = Item(self,"coin.png",Vector2(math.cos(angle),math.sin(angle))*spc)
         self.items.append(i)
 
     def mainloop(self):
@@ -145,7 +167,7 @@ class Main:
                 if self.remaining == 0:
                     if self.waveNumber % 5 == 0:
                         self.shop()
-                    print("WAVE COMPLETED")
+                        self.saveGame()
                     self.waveNumber += 1
                     self.difficulty += 0.1
                     self.generateWave()
@@ -175,6 +197,7 @@ class Main:
 
         self.resumeRound()
 
+
     def shopLengthIncrease(self):
         totalLength = self.player.tentacle.getTotalLength()
         totalLength += 80
@@ -189,6 +212,10 @@ class Main:
     
     def lose(self):
         self.pause()
+        file = open("saveFile.txt","w")
+        file.write("N")
+        file.close()
+
         s = Style(self.parent)
         s.configure("TFrame", background="red")
 
@@ -205,7 +232,7 @@ class Main:
         b2.place(relx=0.5,rely=0.6, anchor=CENTER)
         b1.place(relx=0.5,rely=0.9, anchor=CENTER)
         t.place(relx=0.5,rely=0.05, anchor=N)
-        t2.place(relx=0.5,rely=0.2, anchor=CENTER)
+        t2.place(relx=0.5,rely=0.15, anchor=CENTER)
 
         self.LosesGameWidgets = {
             "Frame" : f,
@@ -251,8 +278,31 @@ class Main:
 
         self.pauseMenu = pauseMenu
 
+    def combo(self,event):
+        current = time.time()
+        if current-self.previousCombo < 1:
+            self.comboCount += 1
+            if self.comboCount == 3:
+                self.decreaseLife(-10)
+        else:
+            self.comboCount = 1
+
+        self.previousCombo = current
+
+        
+
     def resumeBinding(self,event):
         self.resume()
+
+    def debug_boss(self,event):
+        self.pause()
+        self.root.bind("b",self.debug_resume)
+
+    def debug_resume(self,event):
+        self.root.unbind("b",self.debug_resume)
+        self.bindKeys()
+        self.notPaused = True
+
         
     def pause(self):
         self.unbindKeys()
@@ -269,16 +319,19 @@ class Main:
         self.pauseMenu.destroy()
 
     def unbindKeys(self):
-        self.parent.unbind("a")
         self.parent.unbind("<Button-1>")
         self.parent.unbind("<Escape>")
         self.parent.unbind("k")
+        self.parent.unbind("p")
+        
 
     def bindKeys(self):
-        self.parent.bind("a",self.debug_makeWave)
         self.parent.bind("<Button-1>",self.clickevent)
         self.parent.bind("<Escape>", self.pauseBinding)
-        self.parent.bind("k",self.debug_nextBuy)
+        self.parent.bind("k", self.debug_nextBuy)
+        self.root.bind("b",self.debug_boss)
+        self.parent.bind("p",self.combo)
+        
 
     def returnMenu(self):
         self.gameCont = False
@@ -297,7 +350,7 @@ class Main:
             angle = random.uniform(-math.pi,math.pi)
             speed = random.randint(49,speedmax)
             pos = Vector2(math.cos(angle),math.sin(angle))*self.spawnCircle
-            nextItem = [random.uniform(tmin,tmax),Item(self,"placeholderItem.png",pos+self.player.pos,speed)]
+            nextItem = [random.uniform(tmin,tmax),Item(self,"coin.png",pos+self.player.pos,speed)]
             self.wave.append(nextItem)
 
         self.waveTimer = 0
@@ -391,7 +444,7 @@ class Item:
         self.img = PhotoImage(file=imgPath)
         self.pos = startpos
 
-        self.size = 20
+        self.size = 16
 
         self.rotation = 0
         self.speed = speed
@@ -420,7 +473,7 @@ class Joint:
         self.length = length
 
 class Tentacle:
-    def __init__(self,area,start,colour,numJoints=4,segLength=100):
+    def __init__(self,area,start,colour,numJoints=4,segLength=20):
         self.colour = colour
         self.segLength = segLength
         self.joints = [Joint(Vector2(start.x,start.y + i*self.segLength),self.segLength, math.pi/2) for i in range(0,numJoints)]
