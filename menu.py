@@ -1,13 +1,17 @@
+from os import close
 from tkinter import *
 from tkinter.ttk import *
 import gamespace
+import leaderboardScript as l
 
 
 def playGame():
     global mainCont
+    closeMenu()
     m = gamespace.Main(root)
     if not(m.returnToMenu):
         mainCont = False
+    openMenu()
     
 
 def quitProgram():
@@ -17,16 +21,35 @@ def quitProgram():
 
 def openLeaderboard():
     print("leaderboard open")
+    closeMenu()
+    a = l.Main(root)
+    openMenu()
 
+def closeMenu():
+    backgroundImage.forget()
+    playButton.forget()
+    leaderboardButton.forget()
+    quitButton.forget()
+
+
+def openMenu():
+    backgroundImage.pack()
+    playButton.place(       relx=0.5, rely=0.4, anchor=CENTER)
+    leaderboardButton.place(relx=0.5, rely=0.6, anchor=CENTER)
+    quitButton.place(       relx=0.5, rely=0.8, anchor=CENTER)
+    
+    
 
 root = Tk()
 root.protocol("WM_DELETE_WINDOW", quitProgram())
 img = PhotoImage(file="placeholder.png")
 backgroundImage = Label(image=img)
-backgroundImage.pack()
+
 playButton = Button(root,text="PLAY",command=playGame)
 leaderboardButton = Button(root,text="LEADERBOARD",command=openLeaderboard)
 quitButton = Button(root,text="QUIT",command=quitProgram)
+
+openMenu()
 
 height = root.winfo_height()
 width = root.winfo_width()
@@ -40,6 +63,8 @@ playButton.place(       relx=0.5, rely=0.4, anchor=CENTER)
 leaderboardButton.place(relx=0.5, rely=0.6, anchor=CENTER)
 quitButton.place(       relx=0.5, rely=0.8, anchor=CENTER)
 
+
+root.resizable(False,False)
 
 
 mainCont = True
