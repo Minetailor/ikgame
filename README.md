@@ -8,3 +8,4 @@ Controls
  - Esc - Quit
  - P P P - Increase Life (Cheat Code)
  - K - Moves to next buy phase
+ - Space - Restart
